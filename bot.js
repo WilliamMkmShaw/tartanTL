@@ -50,6 +50,7 @@ var bossfight = {"testChannel":
                     "CurrentUser":"None"}
                 };
 
+let deadUsers = new Set();
 const bossMoves = ["Normal", "AOE"];
 const maxUserHealth = 50;
 const delay = time => new Promise(res=>setTimeout(res,time));
@@ -161,6 +162,7 @@ async function newFight (target, modCheck, roomID) {
                         }
     bossfight[roomID]["Status"] = "waiting";
     setTimeout(startBattle, 10000, target, roomID);
+    deadUsers = Set();
   }
 }
 // Join Battle
@@ -190,13 +192,23 @@ async function battling (target, roomID) {
     for (let user in bossfight[roomID]["Users"]) {
       bossfight[roomID]["CurrentMove"] = {"Attack":10, "Heal":0, "HealTarget": ""};
       bossfight[roomID]["CurrentUser"] = user;
-      client.say(target, `${user}, it is your move.`);
-      console.log(bossfight[roomID]["Boss"]["Health"]);
-      await delay(15000);
-      userTurn(target, roomID);
-      bossTurn(target, roomID);
-      //console.log(user);
-      await delay(1000);
+      if (bossfight[roomID]["Users"][user] < 0) {
+        
+      } else {
+        client.say(target, `${user}, it is your move.`);
+        console.log(bossfight[roomID]["Boss"]["Health"]);
+        await delay(15000);
+        userTurn(target, roomID);
+        bossTurn(target, roomID);
+        await delay(1000);
+      }
+      
+      // All users died
+      if (deadUsers.size >= Object.keys(bossfight[roomID]["Users"]).length) {
+        client.say(target, `You Lost!`);
+        bossfight[roomID]["Status"] = "notInProgress";
+        return null;
+      }
     }
   }
   client.say(target, `You win!`);
@@ -243,6 +255,13 @@ async function bossTurn (target, roomID) {
       
       client.say(target, `Boss dealt 2 AOE damage! `
                +`${user} currently has ${bossfight[roomID]["Users"][user]}`);
+    }
+  }
+  
+  for (let user in bossfight[roomID]["Users"]) {
+    if (bossfight[roomID]["Users"][user] <= 0 && (!deadUsers.has(user))){
+      deadUsers.add(bossfight[roomID]["Users"][user]);
+      client.say(target, `${user} has died.`);
     }
   }
 }
